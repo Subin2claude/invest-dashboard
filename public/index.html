@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>투자 인텔리전스 대시보드</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700;900&family=IBM+Plex+Mono:wght@400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0a0c10;--bg2:#0f1218;--bg3:#151a22;--bg4:#1c2330;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --accent:#00d4aa;--accent2:#0099ff;--accent3:#ff6b35;
+  --gold:#f5c842;--red:#ff4560;--green:#00e396;
+  --text:#e8edf5;--text2:#8b95a8;--text3:#5a6478;
+  --mono:'IBM Plex Mono',monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans KR',sans-serif;min-height:100vh;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,170,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,170,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0;}
+
+header{position:sticky;top:0;z-index:100;background:rgba(10,12,16,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border2);padding:0 16px;display:flex;align-items:center;justify-content:space-between;height:54px;gap:8px;}
+.logo-mark{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:3px;color:var(--accent);text-shadow:0 0 20px rgba(0,212,170,.4);white-space:nowrap;}
+.logo-sub{font-size:9px;color:var(--text3);letter-spacing:2px;font-family:var(--mono);}
+.header-center{display:flex;gap:3px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;padding:3px;}
+.tab-btn{padding:5px 11px;border:none;border-radius:5px;background:transparent;color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;transition:all .2s;white-space:nowrap;}
+.tab-btn.active{background:var(--accent);color:#0a0c10;font-weight:700;}
+.tab-btn:hover:not(.active){color:var(--text);background:var(--bg4);}
+.header-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.live-badge{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--text2);}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,227,150,.4);}50%{opacity:.7;box-shadow:0 0 0 4px rgba(0,227,150,0);}}
+.hdr-btn{background:var(--bg3);border:1px solid var(--border2);color:var(--accent);font-family:var(--mono);font-size:10px;padding:5px 10px;border-radius:6px;cursor:pointer;transition:all .2s;display:flex;align-items:center;gap:4px;white-space:nowrap;}
+.hdr-btn:hover{background:var(--accent);color:#0a0c10;}
+
+main{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:18px 16px 80px;}
+.tab-content{display:none;}.tab-content.active{display:block;}
+
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:10px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;}
+.g21{display:grid;grid-template-columns:2fr 1fr;gap:12px;}
+.gap{margin-bottom:16px;}
+
+.st{display:flex;align-items:center;gap:8px;margin-bottom:10px;}
+.st-text{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px;color:var(--text);white-space:nowrap;}
+.st-line{flex:1;height:1px;background:var(--border);}
+.st-badge{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;white-space:nowrap;}
+
+.panel{background:var(--bg2);border:1px solid var(--border);border-radius:11px;overflow:hidden;}
+.pb{padding:14px;}
+
+/* 시세 카드 */
+.q-card{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:12px;position:relative;overflow:hidden;transition:all .2s;cursor:default;}
+.q-card:hover{transform:translateY(-1px);border-color:var(--border2);}
+.q-card::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;}
+.q-card.up::after{background:var(--green);}
+.q-card.down::after{background:var(--red);}
+.q-card.flat::after{background:var(--text3);}
+.q-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;margin-bottom:5px;}
+.q-val{font-family:var(--mono);font-size:18px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.q-val.loading{color:var(--text3);font-size:13px;}
+.q-chg{font-family:var(--mono);font-size:11px;}
+.q-chg.up{color:var(--green);}
+.q-chg.down{color:var(--red);}
+.q-chg.flat{color:var(--text3);}
+.q-sub{font-size:9px;color:var(--text3);margin-top:1px;font-family:var(--mono);}
+
+/* TradingView 컨테이너 */
+.tv-container{position:relative;width:100%;background:var(--bg2);border:1px solid var(--border);border-radius:11px;overflow:hidden;}
+.tv-mini{height:170px;}
+.tv-large{height:420px;}
+
+/* 종목 행 */
+.tr{display:flex;align-items:center;justify-content:space-between;padding:10px 6px;border-bottom:1px solid var(--border);transition:background .12s;border-radius:4px;}
+.tr:last-child{border-bottom:none;}
+.tr:hover{background:var(--bg4);}
+.tr-sym{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text);min-width:80px;}
+.tr-name{font-size:10px;color:var(--text3);}
+.tr-r{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+
+/* 액션 뱃지 */
+.ab{font-size:9px;font-weight:700;padding:2px 8px;border-radius:4px;letter-spacing:.5px;white-space:nowrap;}
+.ab-buy{background:rgba(0,227,150,.15);color:var(--green);border:1px solid rgba(0,227,150,.3);}
+.ab-sell{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
+.ab-hold{background:rgba(139,149,168,.12);color:var(--text2);border:1px solid rgba(139,149,168,.2);}
+.ab-watch{background:rgba(245,200,66,.12);color:var(--gold);border:1px solid rgba(245,200,66,.25);}
+.ab-cut{background:rgba(255,107,53,.15);color:var(--accent3);border:1px solid rgba(255,107,53,.3);}
+
+/* 비중 바 */
+.pb-wrap{display:flex;align-items:center;gap:6px;margin-top:3px;}
+.pb-bg{flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.pb-fill{height:100%;border-radius:2px;}
+
+/* 가격 인라인 */
+.tr-price{font-family:var(--mono);font-size:12px;color:var(--text);}
+.tr-chg-inline{font-family:var(--mono);font-size:10px;}
+.tr-chg-inline.up{color:var(--green);}
+.tr-chg-inline.down{color:var(--red);}
+
+/* 뉴스 */
+.news-item{padding:11px 0;border-bottom:1px solid var(--border);transition:padding .12s;cursor:pointer;}
+.news-item:last-child{border-bottom:none;}
+.news-item:hover{padding-left:6px;}
+.news-meta{display:flex;align-items:center;gap:6px;margin-bottom:5px;font-family:var(--mono);font-size:9px;color:var(--text3);}
+.news-src{font-weight:700;color:var(--text2);}
+.news-title{font-size:11px;line-height:1.55;color:var(--text);}
+.news-loading{padding:14px;text-align:center;color:var(--text3);font-size:11px;font-family:var(--mono);}
+
+/* 이벤트 */
+.ev-item{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.ev-item:last-child{border-bottom:none;}
+.ev-date{font-family:var(--mono);font-size:10px;color:var(--accent2);min-width:42px;padding-top:1px;}
+.ev-title{font-size:11px;font-weight:500;color:var(--text);margin-bottom:1px;}
+.ev-desc{font-size:10px;color:var(--text3);}
+.ev-tag{display:inline-block;font-size:8px;padding:1px 5px;border-radius:3px;margin-left:4px;font-weight:700;}
+.tag-fomc{background:rgba(255,69,96,.15);color:var(--red);}
+.tag-econ{background:rgba(0,153,255,.15);color:var(--accent2);}
+.tag-earn{background:rgba(245,200,66,.12);color:var(--gold);}
+.tag-kr{background:rgba(0,212,170,.12);color:var(--accent);}
+
+/* 부동산 */
+.re-tabs{display:flex;gap:5px;margin-bottom:12px;flex-wrap:wrap;}
+.re-tab{padding:5px 13px;border:1px solid var(--border2);border-radius:6px;background:transparent;color:var(--text2);font-family:'Noto Sans KR',sans-serif;font-size:11px;cursor:pointer;transition:all .2s;}
+.re-tab.active{background:var(--accent2);color:#fff;border-color:var(--accent2);}
+.re-tab:hover:not(.active){background:var(--bg4);color:var(--text);}
+.re-stats{display:grid;grid-template-columns:repeat(2,1fr);gap:9px;}
+.re-card{background:var(--bg4);border:1px solid var(--border);border-radius:7px;padding:11px;}
+.re-lbl{font-size:9px;color:var(--text3);margin-bottom:4px;}
+.re-val{font-family:var(--mono);font-size:16px;font-weight:600;margin-bottom:2px;}
+.re-val.up{color:var(--red);}.re-val.down{color:var(--accent2);}.re-val.flat{color:var(--text2);}
+.re-sub{font-size:9px;color:var(--text3);font-family:var(--mono);}
+.policy-item{display:flex;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);align-items:flex-start;}
+.policy-item:last-child{border-bottom:none;}
+.pol-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;white-space:nowrap;margin-top:1px;}
+.pol-hot{background:rgba(255,69,96,.15);color:var(--red);border:1px solid rgba(255,69,96,.3);}
+.pol-info{background:rgba(0,153,255,.12);color:var(--accent2);border:1px solid rgba(0,153,255,.25);}
+.pol-warn{background:rgba(245,200,66,.12);color:var(--gold);border:1px solid rgba(245,200,66,.25);}
+.pol-title{font-size:11px;font-weight:500;color:var(--text);margin-bottom:2px;}
+.pol-desc{font-size:10px;color:var(--text3);line-height:1.5;}
+.apt-row{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);}
+.apt-row:last-child{border-bottom:none;}
+.apt-name{font-size:11px;font-weight:500;}
+.apt-loc{font-size:9px;color:var(--text3);margin-top:1px;}
+.apt-date{font-family:var(--mono);font-size:10px;color:var(--accent2);}
+.apt-units{font-size:9px;color:var(--text3);margin-top:1px;text-align:right;}
+.apt-rtag{display:inline-block;font-size:8px;padding:1px 4px;border-radius:3px;margin-right:4px;font-weight:700;}
+.apt-seoul{background:rgba(255,69,96,.12);color:var(--red);}
+.apt-gyeonggi{background:rgba(0,153,255,.12);color:var(--accent2);}
+.apt-incheon{background:rgba(0,212,170,.1);color:var(--accent);}
+
+/* 전략 */
+.strat-item{border:1px solid var(--border);border-radius:8px;padding:13px;margin-bottom:9px;background:var(--bg3);}
+.strat-item:last-child{margin-bottom:0;}
+.strat-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;flex-wrap:wrap;gap:6px;}
+.strat-sym{font-family:var(--mono);font-size:13px;font-weight:600;}
+.strat-body{font-size:11px;color:var(--text2);line-height:1.7;}
+.strat-target{margin-top:6px;font-size:10px;color:var(--gold);font-family:var(--mono);}
+.strat-prog{margin-top:8px;display:flex;align-items:center;gap:7px;}
+.prog-lbl{font-size:9px;color:var(--text3);white-space:nowrap;}
+.prog-bar{flex:1;height:3px;background:var(--bg4);border-radius:2px;overflow:hidden;}
+.prog-fill{height:100%;border-radius:2px;}
+
+/* 모달 */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);backdrop-filter:blur(8px);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;opacity:0;pointer-events:none;transition:opacity .25s;}
+.modal-overlay.open{opacity:1;pointer-events:all;}
+.modal{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;width:100%;max-width:760px;max-height:88vh;overflow:hidden;display:flex;flex-direction:column;transform:translateY(16px);transition:transform .25s;}
+.modal-overlay.open .modal{transform:translateY(0);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--bg3);}
+.modal-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;color:var(--accent);}
+.modal-close{background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;padding:2px 6px;border-radius:4px;}
+.modal-close:hover{background:var(--bg4);color:var(--text);}
+.modal-body{overflow-y:auto;padding:20px;flex:1;}
+.modal-tabs{display:flex;gap:4px;margin-bottom:16px;background:var(--bg3);border-radius:7px;padding:3px;}
+.modal-tab{flex:1;padding:6px;border:none;border-radius:5px;background:transparent;color:var(--text2);font-size:11px;cursor:pointer;text-align:center;}
+.modal-tab.active{background:var(--accent2);color:#fff;font-weight:700;}
+.edit-table{width:100%;border-collapse:collapse;}
+.edit-table th{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:1px;padding:6px 8px;text-align:left;border-bottom:1px solid var(--border2);}
+.edit-table td{padding:6px 6px;border-bottom:1px solid var(--border);}
+.edit-input{background:var(--bg4);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-family:var(--mono);font-size:11px;padding:4px 8px;width:100%;outline:none;}
+.edit-input:focus{border-color:var(--accent);}
+.edit-select{background:var(--bg4);border:1px solid var(--border2);border-radius:5px;color:var(--text);font-size:10px;padding:4px 6px;cursor:pointer;}
+.edit-del{background:rgba(255,69,96,.1);border:1px solid rgba(255,69,96,.2);color:var(--red);border-radius:4px;padding:3px 8px;font-size:11px;cursor:pointer;}
+.edit-add{display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(0,212,170,.08);border:1px dashed rgba(0,212,170,.3);border-radius:7px;cursor:pointer;margin-top:10px;width:100%;color:var(--accent);font-size:12px;}
+.edit-add:hover{background:rgba(0,212,170,.14);}
+.modal-footer{padding:14px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px;background:var(--bg3);}
+.btn-cancel{background:var(--bg4);border:1px solid var(--border2);color:var(--text2);padding:7px 18px;border-radius:7px;font-size:12px;cursor:pointer;}
+.btn-save{background:var(--accent);border:none;color:#0a0c10;padding:7px 22px;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;}
+.btn-save:hover{background:#00c49a;}
+.save-ok{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--green);font-family:var(--mono);opacity:0;transition:opacity .3s;}
+.save-ok.show{opacity:1;}
+.color-dot{width:12px;height:12px;border-radius:50%;display:inline-block;cursor:pointer;border:2px solid transparent;}
+.color-dot.selected{border-color:#fff;}
+
+/* 모바일 */
+.mobile-tabs{display:none;position:fixed;bottom:0;left:0;right:0;background:rgba(10,12,16,.97);border-top:1px solid var(--border2);padding:5px 10px 14px;z-index:100;gap:2px;}
+@media(max-width:700px){
+  .mobile-tabs{display:flex;}
+  .mt{flex:1;text-align:center;padding:7px 2px;border-radius:6px;font-size:9px;color:var(--text3);cursor:pointer;}
+  .mt.active{color:var(--accent);background:rgba(0,212,170,.1);}
+  .mt-icon{font-size:14px;display:block;margin-bottom:1px;}
+  .g6,.g4,.g3,.g2,.g21{grid-template-columns:1fr;}
+  .g6{grid-template-columns:repeat(2,1fr);}
+  .header-center{display:none;}
+  .tv-large{height:340px;}
+  .modal{max-height:95vh;}
+}
+@media(max-width:1100px) and (min-width:701px){
+  .g6{grid-template-columns:repeat(3,1fr);}
+  .g4{grid-template-columns:repeat(2,1fr);}
+  .g21{grid-template-columns:1fr;}
+}
+</style>
+</head>
+<body>
+
+<!-- 모달 -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+<div class="modal">
+  <div class="modal-header">
+    <div class="modal-title">📝 포트폴리오 편집</div>
+    <button class="modal-close" onclick="closeModal()">✕</button>
+  </div>
+  <div class="modal-body">
+    <div style="font-size:11px;color:var(--text3);margin-bottom:12px;font-family:var(--mono)">
+      ℹ️ 변경사항은 <span style="color:var(--accent)">이 브라우저에만</span> 저장됩니다.
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchModalTab('intl')">🌐 해외</button>
+      <button class="modal-tab" onclick="switchModalTab('dom')">🇰🇷 국내</button>
+      <button class="modal-tab" onclick="switchModalTab('watch')">👁 관심</button>
+      <button class="modal-tab" onclick="switchModalTab('strat')">🎯 전략</button>
+    </div>
+    <div id="medit-intl"><table class="edit-table"><thead><tr><th>티커</th><th>종목명</th><th>비중%</th><th>색상</th><th>액션</th><th></th></tr></thead><tbody id="intl-edit-rows"></tbody></table><button class="edit-add" onclick="addRow('intl')">＋ 종목 추가</button></div>
+    <div id="medit-dom" style="display:none"><table class="edit-table"><thead><tr><th>종목명</th><th>코드</th><th>비중%</th><th>액션</th><th></th></tr></thead><tbody id="dom-edit-rows"></tbody></table><button class="edit-add" onclick="addRow('dom')">＋ 종목 추가</button></div>
+    <div id="medit-watch" style="display:none"><table class="edit-table"><thead><tr><th>티커/종목명</th><th>설명</th><th>메모</th><th>액션</th><th></th></tr></thead><tbody id="watch-edit-rows"></tbody></table><button class="edit-add" onclick="addRow('watch')">＋ 종목 추가</button></div>
+    <div id="medit-strat" style="display:none">
+      <div style="margin-bottom:14px"><div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500">🔴 손절 대기</div><div id="strat-cut-rows"></div><button class="edit-add" onclick="addStratRow('cut')">＋ 손절 종목</button></div>
+      <div style="margin:16px 0"><div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500">🟡 부분 익절</div><div id="strat-sell-rows"></div><button class="edit-add" onclick="addStratRow('sell')">＋ 익절 종목</button></div>
+      <div><div style="font-size:11px;color:var(--text2);margin-bottom:8px;font-weight:500">🟢 분할매수</div><div id="strat-buy-rows"></div><button class="edit-add" onclick="addStratRow('buy')">＋ 매수 종목</button></div>
+    </div>
+  </div>
+  <div class="modal-footer">
+    <div class="save-ok" id="save-ok">✓ 저장 완료</div>
+    <button class="btn-cancel" onclick="closeModal()">취소</button>
+    <button class="btn-save" onclick="savePortfolio()">💾 저장</button>
+  </div>
+</div>
+</div>
+
+<header>
+  <div style="flex-shrink:0">
+    <div class="logo-mark">INVEST INTEL</div>
+    <div class="logo-sub">슈빙이 투자 대시보드</div>
+  </div>
+  <div class="header-center">
+    <button class="tab-btn active" onclick="switchTab('overview')">📊 종합</button>
+    <button class="tab-btn" onclick="switchTab('portfolio')">💼 포트폴리오</button>
+    <button class="tab-btn" onclick="switchTab('market')">🌐 시장</button>
+    <button class="tab-btn" onclick="switchTab('realestate')">🏢 부동산</button>
+    <button class="tab-btn" onclick="switchTab('strategy')">🎯 전략</button>
+  </div>
+  <div class="header-right">
+    <div class="live-badge"><div class="live-dot"></div><span id="live-time">--:--:--</span></div>
+    <button class="hdr-btn" onclick="openModal()" style="color:var(--gold);border-color:rgba(245,200,66,.3)">✏️ 편집</button>
+    <button class="hdr-btn" onclick="refreshAll()" id="refresh-btn">↻ 새로고침</button>
+  </div>
+</header>
+
+<main>
+
+<!-- 종합 -->
+<div class="tab-content active" id="tab-overview">
+  <div class="st"><span class="st-text">주요 지수</span><div class="st-line"></div><span class="st-badge" id="upd-indices">갱신 중...</span></div>
+  <div class="g6 gap" id="indices-cards"></div>
+
+  <div class="st"><span class="st-text">보유 종목 시세</span><div class="st-line"></div><span class="st-badge">실시간</span></div>
+  <div class="g4 gap" id="holdings-cards"></div>
+
+  <div class="g21 gap">
+    <div>
+      <div class="st"><span class="st-text">환율 · 원자재</span><div class="st-line"></div></div>
+      <div class="g4" id="fx-cards"></div>
+    </div>
+    <div>
+      <div class="st"><span class="st-text">이번 주 이벤트</span><div class="st-line"></div></div>
+      <div class="panel"><div class="pb" id="ev-cal" style="padding:10px 14px"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 포트폴리오 -->
+<div class="tab-content" id="tab-portfolio">
+  <div class="st"><span class="st-text">실시간 보유종목 차트</span><div class="st-line"></div><span class="st-badge">TRADINGVIEW</span></div>
+  <div class="tv-container tv-large gap">
+    <div class="tradingview-widget-container" style="height:100%">
+      <div class="tradingview-widget-container__widget" style="height:100%"></div>
+      <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-market-overview.js" async>
+      {
+        "colorTheme":"dark","dateRange":"1D","showChart":true,"locale":"kr",
+        "isTransparent":true,"showSymbolLogo":true,"width":"100%","height":"420",
+        "plotLineColorGrowing":"rgba(0,212,170,1)","plotLineColorFalling":"rgba(255,69,96,1)",
+        "gridLineColor":"rgba(255,255,255,0.06)","scaleFontColor":"rgba(139,149,168,1)",
+        "belowLineFillColorGrowing":"rgba(0,212,170,0.12)","belowLineFillColorFalling":"rgba(255,69,96,0.12)",
+        "symbolActiveColor":"rgba(0,212,170,0.12)",
+        "tabs":[
+          {"title":"해외 보유","symbols":[
+            {"s":"NASDAQ:TSLA","d":"Tesla"},{"s":"NASDAQ:TQQQ","d":"TQQQ"},
+            {"s":"NASDAQ:AMD","d":"AMD"},{"s":"NASDAQ:AMZN","d":"Amazon"},{"s":"NYSE:T","d":"AT&T"}
+          ]},
+          {"title":"관심","symbols":[
+            {"s":"NASDAQ:NVDA","d":"NVIDIA"}
+          ]}
+        ]
+      }
+      </script>
+    </div>
+  </div>
+
+  <div class="g2 gap">
+    <div>
+      <div class="st"><span class="st-text">해외 포트폴리오</span><div class="st-line"></div></div>
+      <div class="panel"><div class="pb" id="intl-port" style="padding:6px 12px"></div></div>
+    </div>
+    <div>
+      <div class="st"><span class="st-text">국내 포트폴리오</span><div class="st-line"></div></div>
+      <div class="panel"><div class="pb" id="dom-port" style="padding:6px 12px"></div></div>
+    </div>
+  </div>
+
+  <div class="st"><span class="st-text">관심 종목 · 진입 대기</span><div class="st-line"></div></div>
+  <div class="panel gap"><div class="pb" id="watchlist" style="padding:6px 12px"></div></div>
+</div>
+
+<!-- 시장 -->
+<div class="tab-content" id="tab-market">
+  <div class="st"><span class="st-text">미국 주요 지수</span><div class="st-line"></div></div>
+  <div class="g4 gap">
+    <div class="tv-container tv-mini">
+      <div class="tradingview-widget-container" style="height:100%">
+        <div class="tradingview-widget-container__widget" style="height:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {"symbol":"FOREXCOM:SPXUSD","width":"100%","height":"170","locale":"kr","dateRange":"1D","colorTheme":"dark","isTransparent":true,"largeChartUrl":""}
+        </script>
+      </div>
+    </div>
+    <div class="tv-container tv-mini">
+      <div class="tradingview-widget-container" style="height:100%">
+        <div class="tradingview-widget-container__widget" style="height:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {"symbol":"FOREXCOM:NSXUSD","width":"100%","height":"170","locale":"kr","dateRange":"1D","colorTheme":"dark","isTransparent":true,"largeChartUrl":""}
+        </script>
+      </div>
+    </div>
+    <div class="tv-container tv-mini">
+      <div class="tradingview-widget-container" style="height:100%">
+        <div class="tradingview-widget-container__widget" style="height:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {"symbol":"FOREXCOM:DJI","width":"100%","height":"170","locale":"kr","dateRange":"1D","colorTheme":"dark","isTransparent":true,"largeChartUrl":""}
+        </script>
+      </div>
+    </div>
+    <div class="tv-container tv-mini">
+      <div class="tradingview-widget-container" style="height:100%">
+        <div class="tradingview-widget-container__widget" style="height:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {"symbol":"TVC:RUT","width":"100%","height":"170","locale":"kr","dateRange":"1D","colorTheme":"dark","isTransparent":true,"largeChartUrl":""}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <div class="st"><span class="st-text">일본 시장</span><div class="st-line"></div></div>
+  <div class="g2 gap">
+    <div class="tv-container tv-mini">
+      <div class="tradingview-widget-container" style="height:100%">
+        <div class="tradingview-widget-container__widget" style="height:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {"symbol":"TVC:NI225","width":"100%","height":"170","locale":"kr","dateRange":"1D","colorTheme":"dark","isTransparent":true,"largeChartUrl":""}
+        </script>
+      </div>
+    </div>
+    <div class="tv-container tv-mini">
+      <div class="tradingview-widget-container" style="height:100%">
+        <div class="tradingview-widget-container__widget" style="height:100%"></div>
+        <script type="text/javascript" src="https://s3.tradingview.com/external-embedding/embed-widget-mini-symbol-overview.js" async>
+        {"symbol":"FX_IDC:USDJPY","width":"100%","height":"170","locale":"kr","dateRange":"1D","colorTheme":"dark","isTransparent":true,"largeChartUrl":""}
+        </script>
+      </div>
+    </div>
+  </div>
+
+  <div class="g2 gap">
+    <div>
+      <div class="st"><span class="st-text">글로벌 뉴스</span><div class="st-line"></div></div>
+      <div class="panel"><div class="pb" id="news-global" style="padding:8px 14px"><div class="news-loading">📰 뉴스 가져오는 중...</div></div></div>
+    </div>
+    <div>
+      <div class="st"><span class="st-text">국내 뉴스</span><div class="st-line"></div></div>
+      <div class="panel"><div class="pb" id="news-domestic" style="padding:8px 14px"><div class="news-loading">📰 뉴스 가져오는 중...</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- 부동산 -->
+<div class="tab-content" id="tab-realestate">
+  <div class="panel gap" style="overflow:visible">
+    <div style="padding:14px 16px 0">
+      <div class="re-tabs">
+        <button class="re-tab active" onclick="switchRegion('seoul',this)">서울 전체</button>
+        <button class="re-tab" onclick="switchRegion('gangnam',this)">강남·서초·송파</button>
+        <button class="re-tab" onclick="switchRegion('pangyo',this)">경기 판교</button>
+        <button class="re-tab" onclick="switchRegion('bundang',this)">경기 분당</button>
+      </div>
+      <div class="st" style="margin-bottom:10px"><span class="st-text" id="re-region-title">서울 전체 동향</span><div class="st-line"></div><span class="st-badge">WEEKLY</span></div>
+    </div>
+    <div style="padding:0 16px 14px"><div class="re-stats" id="re-stats"></div></div>
+  </div>
+
+  <div class="g2 gap">
+    <div>
+      <div class="st"><span class="st-text">부동산 뉴스</span><div class="st-line"></div></div>
+      <div class="panel"><div class="pb" id="news-realestate" style="padding:8px 14px"><div class="news-loading">📰 뉴스 가져오는 중...</div></div></div>
+    </div>
+    <div>
+      <div class="st"><span class="st-text">정책 · 규제 중요사항</span><div class="st-line"></div></div>
+      <div class="panel"><div class="pb" id="re-policy" style="padding:6px 14px"></div></div>
+    </div>
+  </div>
+
+  <div class="st"><span class="st-text">청약 캘린더</span><div class="st-line"></div><span class="st-badge">서울·판교·분당·수도권</span></div>
+  <div class="panel gap"><div class="pb" id="apt-cal" style="padding:6px 14px"></div></div>
+</div>
+
+<!-- 전략 -->
+<div class="tab-content" id="tab-strategy">
+  <div class="g2 gap">
+    <div><div class="st"><span class="st-text">🔴 손절 대기</span><div class="st-line"></div></div><div id="strat-cut"></div></div>
+    <div><div class="st"><span class="st-text">🟡 부분 익절</span><div class="st-line"></div></div><div id="strat-sell"></div></div>
+  </div>
+  <div class="st"><span class="st-text">🟢 분할매수 타겟</span><div class="st-line"></div></div>
+  <div class="g3 gap" id="strat-buy"></div>
+</div>
+
+</main>
+
+<div class="mobile-tabs">
+  <div class="mt active" onclick="switchTab('overview')"><span class="mt-icon">📊</span>종합</div>
+  <div class="mt" onclick="switchTab('portfolio')"><span class="mt-icon">💼</span>포트폴리오</div>
+  <div class="mt" onclick="switchTab('market')"><span class="mt-icon">🌐</span>시장</div>
+  <div class="mt" onclick="switchTab('realestate')"><span class="mt-icon">🏢</span>부동산</div>
+  <div class="mt" onclick="switchTab('strategy')"><span class="mt-icon">🎯</span>전략</div>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>
