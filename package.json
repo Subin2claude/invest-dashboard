@@ -1,0 +1,12 @@
+{
+  "name": "invest-dashboard",
+  "version": "1.0.0",
+  "description": "투자 인텔리전스 대시보드 - Vercel + GitHub",
+  "private": true,
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
