@@ -1,15 +1,14 @@
 // ════════════════════════════════════════════════════
-// /api/stocks.js — 시세 데이터 백엔드 (Yahoo Finance)
+// /api/stocks.js — 시세 데이터 백엔드 (Yahoo Finance v8)
 // ════════════════════════════════════════════════════
-// 호출: GET /api/stocks?symbols=^KS11,^IXIC,005930.KS
-// 응답: { "^KS11": { price, change, changePercent, ... }, ... }
+// v8 chart API 사용 — 인증 불필요, 안정적
+// previousClose 필드만 사용 (chartPreviousClose는 range 시작점이라 부정확)
 // ════════════════════════════════════════════════════
 
 export default async function handler(req, res) {
-  // CORS 허용 (어디서든 호출 가능)
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET');
-  res.setHeader('Cache-Control', 's-maxage=60, stale-while-revalidate=120');
+  res.setHeader('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
 
   const { symbols } = req.query;
   if (!symbols) {
@@ -19,8 +18,9 @@ export default async function handler(req, res) {
   const symbolList = symbols.split(',').map(s => s.trim()).filter(Boolean);
 
   try {
+    // 모든 심볼 병렬 호출
     const results = await Promise.allSettled(
-      symbolList.map(sym => fetchYahooQuote(sym))
+      symbolList.map(s => fetchYahooV8(s))
     );
 
     const data = {};
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
       if (r.status === 'fulfilled' && r.value) {
         data[sym] = r.value;
       } else {
-        data[sym] = { error: true };
+        data[sym] = { error: true, msg: r.reason?.message || 'fetch failed' };
       }
     });
 
@@ -39,12 +39,16 @@ export default async function handler(req, res) {
   }
 }
 
-async function fetchYahooQuote(symbol) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=5d`;
+// ─────────────────────────────────────────────────────
+// v8 chart API
+// ─────────────────────────────────────────────────────
+async function fetchYahooV8(symbol) {
+  // 2일 range만 (어제+오늘) — 적은 데이터로 빠르게
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=2d`;
 
   const response = await fetch(url, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (compatible; InvestDashboard/1.0)',
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
       'Accept': 'application/json'
     }
   });
@@ -58,8 +62,12 @@ async function fetchYahooQuote(symbol) {
   const closes = result.indicators?.quote?.[0]?.close || [];
   const validCloses = closes.filter(c => c !== null && c !== undefined);
 
+  // 현재가 — meta.regularMarketPrice가 가장 신뢰할 수 있음
   const price = meta.regularMarketPrice ?? validCloses[validCloses.length - 1];
-  const prev = meta.chartPreviousClose ?? meta.previousClose ?? validCloses[validCloses.length - 2];
+
+  // 전일 종가 — meta.previousClose가 정확한 전일 종가
+  // ★ chartPreviousClose는 차트 range 시작점이라 절대 사용 X
+  const prev = meta.previousClose ?? validCloses[validCloses.length - 2];
 
   if (price === undefined || price === null) throw new Error('no price');
 
